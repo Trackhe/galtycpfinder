@@ -1,6 +1,7 @@
 import sys
 import json
 import math
+import os
 from typing import Set
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QPushButton, QCheckBox,
@@ -9,6 +10,16 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QFont
 from icon_mapper import get_svg_id_for_material
+
+# PyInstaller Pfad-Fix
+def resource_path(relative_path):
+    """Gibt den absoluten Pfad zur Ressource zurück, funktioniert für dev und PyInstaller."""
+    try:
+        # PyInstaller erstellt einen temp Ordner und speichert den Pfad in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 # SVG zu PNG Konvertierung
 try:
@@ -29,7 +40,7 @@ class PlanetFinderPyQt(QMainWindow):
         self.setMinimumSize(1600, 900)
 
         # Daten laden
-        with open('data.json', 'r', encoding='utf-8') as f:
+        with open(resource_path('data.json'), 'r', encoding='utf-8') as f:
             self.daten = json.load(f)
 
         # SVG Icons laden
@@ -38,7 +49,7 @@ class PlanetFinderPyQt(QMainWindow):
         self.icon_cache = {}
 
         try:
-            tree = ET.parse('sprite-D4k0byZ2.svg')
+            tree = ET.parse(resource_path('sprite-D4k0byZ2.svg'))
             self.svg_root = tree.getroot()
         except Exception as e:
             print(f"Fehler beim Laden der SVG Datei: {e}")
