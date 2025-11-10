@@ -1,0 +1,80 @@
+name: Build Apps
+on: [push]
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install GTK3 Runtime (for Cairo)
+        run: |
+          choco install -y msys2
+          C:\tools\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-cairo mingw-w64-x86_64-gobject-introspection"
+      
+      - name: Install Python packages
+        run: pip install pyqt6 cairosvg pillow pyinstaller
+      
+      - name: Build EXE
+        run: |
+          $env:PATH = "C:\tools\msys64\mingw64\bin;$env:PATH"
+          pyinstaller --onefile --windowed --name "PlanetFinder" --add-data "data.json;." --add-data "sprite-D4k0byZ2.svg;." --add-data "icon_mapper.py;." --add-binary "C:\tools\msys64\mingw64\bin\libcairo-2.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libpng16-16.dll;." --add-binary "C:\tools\msys64\mingw64\bin\zlib1.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libfreetype-6.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libfontconfig-1.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libpixman-1-0.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libbz2-1.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libharfbuzz-0.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libglib-2.0-0.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libintl-8.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libiconv-2.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libpcre2-8-0.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libgraphite2.dll;." --add-binary "C:\tools\msys64\mingw64\bin\libexpat-1.dll;." gui_pyqt.py
+      
+      - name: Test EXE startup
+        run: |
+          $env:PATH = "C:\tools\msys64\mingw64\bin;$env:PATH"
+          $process = Start-Process -FilePath "dist\PlanetFinder.exe" -PassThru
+          Start-Sleep -Seconds 5
+          if ($process.HasExited) {
+            Write-Error "Application crashed during startup!"
+            exit 1
+          }
+          Stop-Process -Id $process.Id -Force
+          Write-Host "Application started successfully!"
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlanetFinder-Windows
+          path: dist/PlanetFinder.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Cairo
+        run: brew install cairo
+      
+      - name: Install Python packages
+        run: pip install pyqt6 cairosvg pillow pyinstaller
+      
+      - name: Build App
+        run: |
+          pyinstaller --onefile --windowed --name "PlanetFinder" --add-data "data.json:." --add-data "sprite-D4k0byZ2.svg:." --add-data "icon_mapper.py:." gui_pyqt.py
+      
+      - name: Test App startup
+        run: |
+          open -a dist/PlanetFinder.app &
+          sleep 5
+          if pgrep -f "PlanetFinder.app" > /dev/null; then
+            pkill -f "PlanetFinder.app"
+            echo "Application started successfully!"
+          else
+            echo "Application crashed during startup!"
+            exit 1
+          fi
+      
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg --volname "PlanetFinder" --window-pos 200 120 --window-size 600 400 --icon-size 100 --app-drop-link 425 120 "PlanetFinder.dmg" "dist/PlanetFinder.app"
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlanetFinder-macOS
+          path: PlanetFinder.dmg
