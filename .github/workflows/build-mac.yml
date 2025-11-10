@@ -47,20 +47,43 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Verify Architecture
+        run: |
+          uname -m
+          python3 -c "import platform; print(f'Python arch: {platform.machine()}')"
+      
       - name: Install Cairo
-        run: brew install cairo
+        run: brew install cairo pkg-config pixman fontconfig freetype libpng glib
       
       - name: Install Python packages
         run: pip install pyqt6 cairosvg pillow pyinstaller
       
-      - name: Build App
+      - name: Build App (ARM64)
         run: |
-          pyinstaller --onefile --windowed --name "PlanetFinder" --add-data "data.json:." --add-data "sprite-D4k0byZ2.svg:." --add-data "icon_mapper.py:." gui_pyqt.py
+          CAIRO_PATH=$(brew --prefix cairo)/lib
+          PIXMAN_PATH=$(brew --prefix pixman)/lib
+          FONTCONFIG_PATH=$(brew --prefix fontconfig)/lib
+          FREETYPE_PATH=$(brew --prefix freetype)/lib
+          PNG_PATH=$(brew --prefix libpng)/lib
+          GLIB_PATH=$(brew --prefix glib)/lib
+          
+          pyinstaller --onefile --windowed --name "PlanetFinder" \
+            --target-arch arm64 \
+            --add-data "data.json:." \
+            --add-data "sprite-D4k0byZ2.svg:." \
+            --add-data "icon_mapper.py:." \
+            --add-binary "$CAIRO_PATH/libcairo.2.dylib:." \
+            --add-binary "$PIXMAN_PATH/libpixman-1.0.dylib:." \
+            --add-binary "$FONTCONFIG_PATH/libfontconfig.1.dylib:." \
+            --add-binary "$FREETYPE_PATH/libfreetype.6.dylib:." \
+            --add-binary "$PNG_PATH/libpng16.16.dylib:." \
+            --add-binary "$GLIB_PATH/libglib-2.0.0.dylib:." \
+            gui_pyqt.py
       
-      - name: Check build output
+      - name: Verify App Architecture
         run: |
-          ls -la dist/
-          file dist/PlanetFinder.app/Contents/MacOS/PlanetFinder || true
+          file dist/PlanetFinder.app/Contents/MacOS/PlanetFinder
+          lipo -info dist/PlanetFinder.app/Contents/MacOS/PlanetFinder
       
       - name: Test App startup
         run: |
@@ -82,7 +105,7 @@ jobs:
       
       - uses: actions/upload-artifact@v4
         with:
-          name: PlanetFinder-macOS
+          name: PlanetFinder-macOS-ARM64
           path: |
             PlanetFinder.dmg
             PlanetFinder.app
