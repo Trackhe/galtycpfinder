@@ -1,0 +1,17 @@
+   # .github/workflows/build.yml
+   name: Build Windows EXE
+   on: [push]
+   jobs:
+     build:
+       runs-on: windows-latest
+       steps:
+         - uses: actions/checkout@v2
+         - uses: actions/setup-python@v2
+           with:
+             python-version: '3.11'
+         - run: pip install pyqt6 cairosvg pillow pyinstaller
+         - run: pyinstaller --onefile --windowed --name "PlanetFinder" --add-data "data.json;." --add-data "sprite-D4k0byZ2.svg;." --add-data "icon_mapper.py;." gui_pyqt.py
+         - uses: actions/upload-artifact@v2
+           with:
+             name: PlanetFinder-Windows
+             path: dist/PlanetFinder.exe
